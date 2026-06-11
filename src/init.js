@@ -1,14 +1,14 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 const SETTINGS = join(homedir(), '.claude', 'settings.json')
 
-// Absolute path to this package's CLI. The status-line command points at this
-// directly (`node <path> line`) so it works whether or not `lull` is on PATH —
-// no global-bin assumption, no broken status bar for npx-only installs.
-const CLI_PATH = fileURLToPath(new URL('./cli.js', import.meta.url))
+// The status-line command. We use the bare bin name (installed globally on PATH)
+// rather than an absolute `node <path>` — Claude Code runs status-line commands
+// through a bash-like shell, and on Windows the backslashes in an absolute path
+// (C:\Users\...) get eaten, breaking it. A plain bin name has no backslashes.
+const STATUS_COMMAND = 'kapari-lull line'
 
 function load() {
   if (!existsSync(SETTINGS)) return {}
@@ -41,7 +41,7 @@ export async function runInit(args) {
   if (args.includes('--off')) return runUninstall()
 
   const s = load()
-  const command = process.env.LULL_COMMAND || `node ${JSON.stringify(CLI_PATH)} line`
+  const command = process.env.LULL_COMMAND || STATUS_COMMAND
   s.statusLine = { type: 'command', command, refreshInterval: 8, padding: 1 }
 
   // Force OSC 8 hyperlinks on so ads are clickable even on terminals Claude
