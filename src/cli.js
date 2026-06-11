@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Lull — get paid for the spinner. CLI dispatcher.
 import { runLine } from './line.js'
-import { runInit } from './init.js'
+import { runInit, runUninstall } from './init.js'
 import { runServe } from './serve.js'
 
 const [cmd, ...rest] = process.argv.slice(2)
@@ -10,7 +10,7 @@ function help() {
   process.stdout.write(`lull — get paid for the spinner
 
   lull init          wire Lull into your Claude Code status line
-  lull init --off    remove Lull from your status line
+  lull uninstall     remove Lull from your status line
   lull line          print one ad line (used by the status line; reads stdin)
   lull serve [port]  run the ad / bid server
 
@@ -22,6 +22,7 @@ async function main() {
   switch (cmd) {
     case 'line': return runLine(rest)
     case 'init': return runInit(rest)
+    case 'uninstall': case 'off': return runUninstall()
     case 'serve': return runServe(rest)
     case 'help': case '-h': case '--help': return help()
     case undefined:

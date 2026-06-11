@@ -1,6 +1,6 @@
 {
-  "name": "lull-cli",
-  "version": "0.1.0",
+  "name": "@kapari/lull",
+  "version": "0.1.1",
   "description": "Get paid for the spinner — an ad marketplace for the Claude Code status line.",
   "type": "module",
   "bin": {

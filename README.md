@@ -10,11 +10,13 @@ Sorry, terminal jockeys.
 
 ## Install
 
-**npm (one command, auto-wires your config):**
-
 ```bash
-npx lull-cli init
+npm install -g @kapari/lull
+lull init
 ```
+
+`lull init` wires Lull into `~/.claude/settings.json` (backing it up first) using
+an absolute path, so it works regardless of your PATH.
 
 **or as a Claude Code plugin:**
 
@@ -27,7 +29,15 @@ npx lull-cli init
 Open a new Claude Code session and watch the bottom row. ⌘-click an ad
 (Ctrl-click on Linux/Windows) to open it.
 
-Remove it any time: `npx lull-cli init --off` (or `/lull off`).
+## Uninstall
+
+```bash
+lull uninstall                 # remove Lull from your status line
+npm uninstall -g @kapari/lull  # remove the tool entirely
+```
+
+`lull uninstall` removes only what Lull added; the rest of your settings is
+untouched (and a `settings.json.lull.bak` backup is kept just in case).
 
 ## How it works
 
@@ -51,7 +61,7 @@ Claude Code status line
 | Command | Does |
 |---|---|
 | `lull init` | Wire Lull into `~/.claude/settings.json` (backs it up first) |
-| `lull init --off` | Remove Lull from your status line |
+| `lull uninstall` | Remove Lull from your status line |
 | `lull line` | Print one ad line (what the status line runs) |
 | `lull serve [port]` | Run the ad / bid server locally |
 
