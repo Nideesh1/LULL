@@ -16,7 +16,8 @@ kapari-lull init
 ```
 
 `kapari-lull init` wires Lull into `~/.claude/settings.json` (backing it up
-first) using an absolute path, so it works regardless of your PATH.
+first). Install globally (above) so the `kapari-lull` command is on your PATH —
+that's what the status line runs.
 
 **or as a Claude Code plugin:**
 
