@@ -1,10 +1,10 @@
 {
-  "name": "@kapari/lull",
-  "version": "0.1.1",
+  "name": "kapari-lull",
+  "version": "0.2.0",
   "description": "Get paid while you wait. Simple status ads for Claude Code.",
   "type": "module",
   "bin": {
-    "lull": "src/cli.js"
+    "kapari-lull": "src/cli.js"
   },
   "files": [
     "src",

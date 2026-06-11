@@ -7,12 +7,12 @@ import { runServe } from './serve.js'
 const [cmd, ...rest] = process.argv.slice(2)
 
 function help() {
-  process.stdout.write(`lull: get paid while you wait
+  process.stdout.write(`kapari-lull: get paid while you wait
 
-  lull init          wire Lull into your Claude Code status line
-  lull uninstall     remove Lull from your status line
-  lull line          print one ad line (used by the status line; reads stdin)
-  lull serve [port]  run the ad / bid server
+  kapari-lull init          wire Lull into your Claude Code status line
+  kapari-lull uninstall     remove Lull from your status line
+  kapari-lull line          print one ad line (used by the status line; reads stdin)
+  kapari-lull serve [port]  run the ad / bid server
 
 docs: https://github.com/Nideesh1/LULL
 `)

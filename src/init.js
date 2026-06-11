@@ -55,7 +55,7 @@ export async function runInit(args) {
   console.log(`   statusLine → ${command}`)
   console.log('   ⌘-click an ad to open it (Ctrl-click on Linux/Windows).')
   console.log('   Open a NEW Claude Code session to see it.')
-  console.log('   Remove any time:  lull uninstall')
+  console.log('   Remove any time:  kapari-lull uninstall')
 }
 
 export async function runUninstall() {
@@ -65,6 +65,6 @@ export async function runUninstall() {
 
   console.log('✅ Lull removed from your status line.')
   console.log(`   settings: ${SETTINGS}  (backup: settings.json.lull.bak)`)
-  console.log('   Remove the tool too:  npm uninstall -g @kapari/lull')
+  console.log('   Remove the tool too:  npm uninstall -g kapari-lull')
   console.log('   Open a NEW Claude Code session.')
 }

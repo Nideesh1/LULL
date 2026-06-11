@@ -1,11 +1,11 @@
 {
-  "name": "lull",
+  "name": "kapari-lull",
   "owner": { "name": "Nideesh" },
   "plugins": [
     {
-      "name": "lull",
+      "name": "kapari-lull",
       "source": "./",
-      "description": "Ads in your Claude Code status line. Get paid for the spinner."
+      "description": "Get paid while you wait. Simple status ads for Claude Code."
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
-  "name": "lull",
-  "version": "0.1.0",
-  "description": "Get paid for the spinner — ads in your Claude Code status line.",
+  "name": "kapari-lull",
+  "version": "0.2.0",
+  "description": "Get paid while you wait. Simple status ads for Claude Code.",
   "author": { "name": "Nideesh" },
   "homepage": "https://github.com/Nideesh1/LULL"
 }

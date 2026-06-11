@@ -1,6 +1,6 @@
 {
   "subagentStatusLine": {
     "type": "command",
-    "command": "lull line"
+    "command": "kapari-lull line"
   }
 }

@@ -85,6 +85,6 @@ export async function runServe(args) {
     console.log(`  GET  /click?id=    → 302 to advertiser (+1 click)`)
     console.log(`  POST /bid          → add/replace an ad`)
     console.log(`  GET  /leaderboard  → ranking`)
-    console.log(`\nPoint the client at it:  LULL_SERVER=${publicUrl} lull line`)
+    console.log(`\nPoint the client at it:  LULL_SERVER=${publicUrl} kapari-lull line`)
   })
 }
