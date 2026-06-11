@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+.env
+# production-only anti-fraud / payout / KYC code never enters the repo
+src/_private/

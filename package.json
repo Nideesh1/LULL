@@ -1,0 +1,33 @@
+{
+  "name": "lull-cli",
+  "version": "0.1.0",
+  "description": "Get paid for the spinner — an ad marketplace for the Claude Code status line.",
+  "type": "module",
+  "bin": {
+    "lull": "src/cli.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "serve": "node src/cli.js serve"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "cli",
+    "statusline",
+    "ads",
+    "developer-tools"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nideesh1/LULL.git"
+  }
+}

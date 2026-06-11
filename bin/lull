@@ -1,0 +1,9 @@
+#!/usr/bin/env node
+// Plugin entry point. When the Lull plugin is enabled, Claude Code adds this
+// plugin's bin/ directory to PATH, so `lull` becomes available. Forwards to
+// the shared CLI so npm and plugin installs run identical code.
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+
+const here = dirname(fileURLToPath(import.meta.url))
+await import(join(here, '..', 'src', 'cli.js'))

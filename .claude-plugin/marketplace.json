@@ -1,0 +1,11 @@
+{
+  "name": "lull",
+  "owner": { "name": "Nideesh" },
+  "plugins": [
+    {
+      "name": "lull",
+      "source": "./",
+      "description": "Ads in your Claude Code status line. Get paid for the spinner."
+    }
+  ]
+}
