@@ -1,7 +1,7 @@
 {
   "name": "@kapari/lull",
   "version": "0.1.1",
-  "description": "Get paid for the spinner — an ad marketplace for the Claude Code status line.",
+  "description": "Get paid while you wait. Simple status ads for Claude Code.",
   "type": "module",
   "bin": {
     "lull": "src/cli.js"

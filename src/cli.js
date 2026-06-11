@@ -7,7 +7,7 @@ import { runServe } from './serve.js'
 const [cmd, ...rest] = process.argv.slice(2)
 
 function help() {
-  process.stdout.write(`lull — get paid for the spinner
+  process.stdout.write(`lull: get paid while you wait
 
   lull init          wire Lull into your Claude Code status line
   lull uninstall     remove Lull from your status line

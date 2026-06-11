@@ -7,7 +7,7 @@ export const FALLBACK_ADS = [
   { id: 'do',     text: 'DigitalOcean — $200 in free credit',        url: 'https://www.digitalocean.com/?refcode=REPLACE_ME', brand: 'DigitalOcean' },
   { id: 'vultr',  text: 'Vultr — cloud compute from $2.50/mo',       url: 'https://www.vultr.com/?ref=REPLACE_ME',            brand: 'Vultr' },
   { id: 'ncheap', text: 'Namecheap — domains from $5.98',            url: 'https://namecheap.pxf.io/REPLACE_ME',              brand: 'Namecheap' },
-  { id: 'house',  text: 'Your ad here → get paid for the spinner',   url: 'https://github.com/Nideesh1/LULL',                 brand: 'Lull' },
+  { id: 'house',  text: 'Your ad here. Get paid while you wait.',     url: 'https://github.com/Nideesh1/LULL',                 brand: 'Lull' },
 ]
 
 const ESC = '\x1b'

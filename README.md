@@ -1,11 +1,11 @@
 # Lull
 
-**Get paid for the spinner.** Lull shows a single, tasteful ad in your Claude
-Code status line — and shares the revenue with you, the developer whose machine
-showed it. Ads while you wait; cash while you build.
+**Get paid while you wait.** Simple status ads for Claude Code. Lull shows one
+tasteful ad in your status line and shares the revenue with you, the developer
+whose machine showed it.
 
 Works best in IDE / OSC-8 terminals (VS Code, iTerm2, Kitty, WezTerm, Ghostty).
-Terminal CLI works too — ads still show, clicks just need a capable terminal.
+The terminal CLI works too; ads still show, clicks just need a capable terminal.
 Sorry, terminal jockeys.
 
 ## Install
