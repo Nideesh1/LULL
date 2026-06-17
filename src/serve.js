@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { FALLBACK_ADS, render } from './ads.js'
+import { FALLBACK_FEED, render } from './ads.js'
 
 // Reference ad / bid server. Affiliate fill is seeded as low house bids; real
 // bids posted to /bid outrank them. In-memory only — production swaps the
@@ -9,7 +9,7 @@ export async function runServe(args) {
   const publicUrl = (process.env.LULL_PUBLIC_URL || `http://localhost:${port}`).replace(/\/$/, '')
 
   const ads = new Map()
-  for (const a of FALLBACK_ADS) ads.set(a.id, { ...a, bid_cpm: 1, impressions: 0, clicks: 0 })
+  for (const a of FALLBACK_FEED) ads.set(a.id, { ...a, bid_cpm: 1, impressions: 0, clicks: 0 })
 
   const weight = (a) => Math.max(a.bid_cpm, 0.01)
   function pick() {
