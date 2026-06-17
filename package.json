@@ -1,6 +1,6 @@
 {
   "name": "kapari-lull",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Get paid while you wait. Simple status ads for Claude Code.",
   "type": "module",
   "bin": {
