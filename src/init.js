@@ -10,6 +10,11 @@ const SETTINGS = join(homedir(), '.claude', 'settings.json')
 // (C:\Users\...) get eaten, breaking it. A plain bin name has no backslashes.
 const STATUS_COMMAND = 'kapari-lull line'
 
+// Default feed server. Currently the local docker-compose stack (AI_LULL_BACKEND)
+// for testing — switch to the deployed URL once the dev-feed pivot ships for
+// real users. `LULL_SERVER` set in the calling shell before `init` overrides this.
+const DEFAULT_SERVER = 'http://localhost:8990'
+
 function load() {
   if (!existsSync(SETTINGS)) return {}
   try {
@@ -32,6 +37,7 @@ function removeLull(s) {
   delete s.statusLine
   if (s.env) {
     delete s.env.FORCE_HYPERLINK
+    delete s.env.LULL_SERVER
     if (Object.keys(s.env).length === 0) delete s.env
   }
   return s
@@ -44,16 +50,23 @@ export async function runInit(args) {
   const command = process.env.LULL_COMMAND || STATUS_COMMAND
   s.statusLine = { type: 'command', command, refreshInterval: 8, padding: 1 }
 
-  // Force OSC 8 hyperlinks on so ads are clickable even on terminals Claude
-  // Code doesn't allowlist (Ghostty, Warp, …). Harmless on capable terminals.
-  s.env = { ...(s.env || {}), FORCE_HYPERLINK: '1' }
+  // Force OSC 8 hyperlinks on so feed items are clickable even on terminals
+  // Claude Code doesn't allowlist (Ghostty, Warp, …). Harmless on capable
+  // terminals. Persist LULL_SERVER into settings.env too, so the status-line
+  // subprocess always sees it regardless of the user's shell env.
+  s.env = {
+    ...(s.env || {}),
+    FORCE_HYPERLINK: '1',
+    LULL_SERVER: process.env.LULL_SERVER || DEFAULT_SERVER,
+  }
 
   save(s)
 
   console.log('✅ Lull is live.')
   console.log(`   settings: ${SETTINGS}  (backup: settings.json.lull.bak)`)
   console.log(`   statusLine → ${command}`)
-  console.log('   ⌘-click an ad to open it (Ctrl-click on Linux/Windows).')
+  console.log(`   feed server → ${s.env.LULL_SERVER}`)
+  console.log('   ⌘-click an item to open it (Ctrl-click on Linux/Windows).')
   console.log('   Open a NEW Claude Code session to see it.')
   console.log('   Remove any time:  kapari-lull uninstall')
 }

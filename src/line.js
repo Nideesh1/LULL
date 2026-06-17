@@ -1,4 +1,4 @@
-import { FALLBACK_ADS, render, rotate } from './ads.js'
+import { FALLBACK_ITEMS, render, rotate } from './feed.js'
 
 // Read piped stdin (Claude Code streams session JSON) with a short timeout so
 // the status line never hangs. Returns '' if nothing arrives.
@@ -15,6 +15,17 @@ function readStdin(timeoutMs = 60) {
   })
 }
 
+// Fire-and-forget impression ping — never awaited by the caller. A slow or
+// dead server must not hold up the line.
+function recordImpression(base, item_id) {
+  fetch(`${base}/event`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ item_id, type: 'impression' }),
+    signal: AbortSignal.timeout(1200),
+  }).catch(() => {})
+}
+
 export async function runLine() {
   const raw = await readStdin()
   let repo = ''
@@ -22,20 +33,24 @@ export async function runLine() {
 
   const server = process.env.LULL_SERVER
   if (server) {
+    const base = server.replace(/\/$/, '')
     try {
-      const r = await fetch(
-        `${server.replace(/\/$/, '')}/ad?repo=${encodeURIComponent(repo)}`,
-        { signal: AbortSignal.timeout(1200) },
-      )
+      const r = await fetch(`${base}/feed?repo=${encodeURIComponent(repo)}`, {
+        signal: AbortSignal.timeout(1200),
+      })
       if (r.ok) {
-        const line = await r.text()
-        if (line) { process.stdout.write(line); return }
+        const { item } = await r.json()
+        if (item?.title) {
+          recordImpression(base, item.item_id)
+          process.stdout.write(render({ text: item.title, url: item.url }))
+          return
+        }
       }
     } catch { /* server down — fall through to local fill */ }
   }
 
-  // Local affiliate fill — rotates every 8s, no server required. A dead server
-  // must never break the status line.
-  const ad = rotate(FALLBACK_ADS, 8)
-  if (ad) process.stdout.write(render(ad))
+  // Local fill — rotates every 8s, no server required. A dead server must
+  // never leave the status line empty.
+  const item = rotate(FALLBACK_ITEMS, 8)
+  if (item) process.stdout.write(render(item))
 }

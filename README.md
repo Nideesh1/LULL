@@ -1,11 +1,11 @@
 # Lull
 
-**Get paid while you wait.** Simple status ads for Claude Code. Lull shows one
-tasteful ad in your status line and shares the revenue with you, the developer
-whose machine showed it.
+**A calm, curated dev feed for your status line.** Lull shows one tasteful
+link in your Claude Code status line — an open-source tool, a bit of hot
+tech news, occasionally a sponsored placement. One link, no doomscroll.
 
 Works best in IDE / OSC-8 terminals (VS Code, iTerm2, Kitty, WezTerm, Ghostty).
-The terminal CLI works too; ads still show, clicks just need a capable terminal.
+The terminal CLI works too; items still show, clicks just need a capable terminal.
 Sorry, terminal jockeys.
 
 ## Install
@@ -24,10 +24,10 @@ that's what the status line runs.
 ```
 /plugin marketplace add Nideesh1/LULL
 /plugin install kapari-lull
-/kapari-lull            # turn the status-line ad on
+/kapari-lull            # turn the status-line feed on
 ```
 
-Open a new Claude Code session and watch the bottom row. ⌘-click an ad
+Open a new Claude Code session and watch the bottom row. ⌘-click an item
 (Ctrl-click on Linux/Windows) to open it.
 
 ## Uninstall
@@ -45,17 +45,16 @@ is untouched (and a `settings.json.lull.bak` backup is kept just in case).
 ```
 Claude Code status line
    └─ runs `kapari-lull line` every few seconds (passes session JSON on stdin)
-        └─ fetches one ad from the bid server (counts an impression)
-             └─ prints it as a clickable OSC 8 link  →  ⌘-click → /click → advertiser
+        └─ fetches ONE item from the feed server (round-robin), records an impression
+             └─ prints it as a clickable OSC 8 link  →  ⌘-click → opens it directly
 ```
 
-- **Impressions** are counted on every render — the base revenue (CPM), works
-  in every terminal.
-- **Clicks** are the premium tier — they need an OSC-8-capable terminal.
-  `kapari-lull init` sets `FORCE_HYPERLINK=1` so clicks work even on terminals Claude
-  Code doesn't allowlist.
-- With **no server configured**, `kapari-lull line` falls back to built-in affiliate
-  ads so the line is never empty and a dead server never breaks your status bar.
+- **Impressions** are recorded on every render via `POST /event` — fire-and-forget,
+  never blocks the status line.
+- ⌘-click opens the item's URL directly. Click tracking isn't wired up yet.
+- With **no server configured** (or one that's unreachable), `kapari-lull line`
+  falls back to a few built-in, perennially-useful dev-tool tips, so the line
+  is never empty and a dead server never breaks your status bar.
 
 ## Commands
 
@@ -63,33 +62,39 @@ Claude Code status line
 |---|---|
 | `kapari-lull init` | Wire Lull into `~/.claude/settings.json` (backs it up first) |
 | `kapari-lull uninstall` | Remove Lull from your status line |
-| `kapari-lull line` | Print one ad line (what the status line runs) |
-| `kapari-lull serve [port]` | Run the ad / bid server locally |
+| `kapari-lull line` | Print one feed item (what the status line runs) |
+| `kapari-lull serve [port]` | Legacy local test server — superseded by [AI_LULL_BACKEND](https://github.com/Nideesh1/AI_LULL_BACKEND) |
 
-## Run the server
+## Run your own feed server
+
+The real feed server is [AI_LULL_BACKEND](https://github.com/Nideesh1/AI_LULL_BACKEND)
+(FastAPI + Redis + MongoDB). Run it locally via `docker compose up` in that repo,
+or point at a deployed instance:
 
 ```bash
-kapari-lull serve                # http://localhost:8787
-LULL_SERVER=http://localhost:8787 kapari-lull init   # point the client at it
+LULL_SERVER=https://your-deployed-backend kapari-lull init
 ```
 
-Endpoints: `GET /ad`, `GET /click?id=`, `POST /bid`, `GET /leaderboard`.
+`kapari-lull init` currently defaults `LULL_SERVER` to `http://localhost:8990`
+for local testing.
 
-Post a bid:
+Endpoints: `GET /feed`, `POST /event`, `POST /feed` (admin, replaces the whole feed).
+
+Push a feed item (admin key required):
 
 ```bash
-curl -X POST localhost:8787/bid -d '{"id":"acme","text":"Acme — ship faster","url":"https://acme.dev","bid_cpm":42}'
+curl -X POST localhost:8990/feed \
+  -H "x-admin-key: <key>" -H "content-type: application/json" \
+  -d '{"items":[{"kind":"tool","title":"ripgrep — fast code search","url":"https://github.com/BurntSushi/ripgrep"}]}'
 ```
 
 ## Configure
 
 | Env | Default | Meaning |
 |---|---|---|
-| `LULL_SERVER` | _(unset)_ | Ad server URL; unset → local affiliate fill |
+| `LULL_SERVER` | `http://localhost:8990` (set by `init`) | Feed server URL; unreachable → local fallback tips |
 | `LULL_COMMAND` | `kapari-lull line` | Command `kapari-lull init` writes into settings |
-| `PORT` / `LULL_PUBLIC_URL` | `8787` | Server port / public base URL |
-
-> Replace the `REPLACE_ME` affiliate codes in `src/ads.js` with your own.
+| `PORT` / `LULL_PUBLIC_URL` | `8787` | Legacy `kapari-lull serve` port / public base URL |
 
 ## License
 
