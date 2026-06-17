@@ -22,8 +22,9 @@ export async function runLine() {
 
   const server = process.env.LULL_SERVER
   if (server) {
+    const base = server.replace(/\/$/, '')
     try {
-      const r = await fetch(`${server.replace(/\/$/, '')}/feed`, {
+      const r = await fetch(`${base}/feed`, {
         signal: AbortSignal.timeout(1200),
       })
       if (r.ok) {
@@ -34,10 +35,12 @@ export async function runLine() {
         // was the one place an impression could get lost if Claude Code
         // killed this short-lived process before it landed (it cancels an
         // in-flight statusLine run whenever a new render is triggered).
-        // Clicks still can't be observed here either way — the terminal opens
-        // the URL directly in a browser, out of this process's reach.
+        // fromFeedItem() also rewrites the link to the backend's /click
+        // redirect instead of item.url directly, so a later click — which
+        // happens in the browser, long after this process has exited — still
+        // gets counted; the backend logs it and 302s on to the real URL.
         const { item } = await r.json()
-        const ad = fromFeedItem(item)
+        const ad = fromFeedItem(item, base)
         if (ad) {
           process.stdout.write(render(ad))
           return
