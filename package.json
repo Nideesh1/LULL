@@ -1,7 +1,7 @@
 {
   "name": "kapari-lull",
   "version": "0.2.1",
-  "description": "Get paid while you wait. Simple status ads for Claude Code.",
+  "description": "A calm, curated dev feed for your Claude Code status line.",
   "type": "module",
   "bin": {
     "kapari-lull": "src/cli.js"
@@ -19,7 +19,7 @@
     "claude",
     "cli",
     "statusline",
-    "ads",
+    "feed",
     "developer-tools"
   ],
   "license": "MIT",
