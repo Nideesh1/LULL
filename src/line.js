@@ -1,4 +1,4 @@
-import { FALLBACK_ADS, render, rotate } from './ads.js'
+import { FALLBACK_ADS, render, rotate, fromFeedItem } from './ads.js'
 
 // Read piped stdin (Claude Code streams session JSON) with a short timeout so
 // the status line never hangs. Returns '' if nothing arrives.
@@ -16,22 +16,37 @@ function readStdin(timeoutMs = 60) {
 }
 
 export async function runLine() {
-  const raw = await readStdin()
-  let repo = ''
-  try { repo = JSON.parse(raw)?.workspace?.repo?.name ?? '' } catch { /* ignore */ }
+  // Drain piped stdin (Claude Code streams session JSON) so we stay a well-behaved
+  // pipe consumer; the /feed endpoint needs nothing from it.
+  await readStdin()
 
   const server = process.env.LULL_SERVER
   if (server) {
+    const base = server.replace(/\/$/, '')
     try {
-      const r = await fetch(
-        `${server.replace(/\/$/, '')}/ad?repo=${encodeURIComponent(repo)}`,
-        { signal: AbortSignal.timeout(1200) },
-      )
+      const r = await fetch(`${base}/feed`, {
+        signal: AbortSignal.timeout(1200),
+      })
       if (r.ok) {
-        const line = await r.text()
-        if (line) { process.stdout.write(line); return }
+        // Backend returns { item: {item_id, title, url, sponsor, ...}, items: [...] }.
+        // It round-robins `item` server-side (Redis INCR) AND counts the
+        // impression server-side before responding — this request alone is
+        // the whole interaction. No follow-up POST /event: that second call
+        // was the one place an impression could get lost if Claude Code
+        // killed this short-lived process before it landed (it cancels an
+        // in-flight statusLine run whenever a new render is triggered).
+        // fromFeedItem() also rewrites the link to the backend's /click
+        // redirect instead of item.url directly, so a later click — which
+        // happens in the browser, long after this process has exited — still
+        // gets counted; the backend logs it and 302s on to the real URL.
+        const { item } = await r.json()
+        const ad = fromFeedItem(item, base)
+        if (ad) {
+          process.stdout.write(render(ad))
+          return
+        }
       }
-    } catch { /* server down — fall through to local fill */ }
+    } catch { /* server down or bad payload — fall through to local fill */ }
   }
 
   // Local affiliate fill — rotates every 8s, no server required. A dead server

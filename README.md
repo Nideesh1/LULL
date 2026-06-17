@@ -45,15 +45,23 @@ is untouched (and a `settings.json.lull.bak` backup is kept just in case).
 ```
 Claude Code status line
    └─ runs `kapari-lull line` every few seconds (passes session JSON on stdin)
-        └─ fetches one ad from the bid server (counts an impression)
-             └─ prints it as a clickable OSC 8 link  →  ⌘-click → /click → advertiser
+        └─ GET /feed → one item, and the server counts the impression
+             └─ prints it as a clickable OSC 8 link  →  ⌘-click → advertiser
 ```
 
-- **Impressions** are counted on every render — the base revenue (CPM), works
-  in every terminal.
-- **Clicks** are the premium tier — they need an OSC-8-capable terminal.
-  `kapari-lull init` sets `FORCE_HYPERLINK=1` so clicks work even on terminals Claude
-  Code doesn't allowlist.
+- **Impressions** are counted server-side, inside `GET /feed` itself, before
+  the response goes out — the base revenue (CPM), works in every terminal.
+  There's no separate "report this" call from the client: `kapari-lull line`
+  is a short-lived process Claude Code can kill mid-render on the next status
+  line update, so a second round-trip was the one place an impression could
+  silently get lost. One request, durably counted, every time.
+- **Clicks** open the advertiser URL directly from the terminal. With this
+  backend they're *not* attributed: the click happens in your browser, out of
+  reach of the (stateless, per-render) status-line process. Counting them would
+  need a redirect endpoint on the server that 302s to the advertiser — that's
+  outside the `/feed` + `/event` API. `kapari-lull init` still sets
+  `FORCE_HYPERLINK=1` so the links stay clickable on terminals Claude Code
+  doesn't allowlist.
 - With **no server configured**, `kapari-lull line` falls back to built-in affiliate
   ads so the line is never empty and a dead server never breaks your status bar.
 
@@ -68,26 +76,37 @@ Claude Code status line
 
 ## Run the server
 
+`kapari-lull serve` runs a zero-dependency, in-memory stand-in for the real
+backend (AI_LULL_BACKEND) that speaks the same `/feed` + `/event` contract:
+
 ```bash
-kapari-lull serve                # http://localhost:8787
-LULL_SERVER=http://localhost:8787 kapari-lull init   # point the client at it
+kapari-lull serve                # http://localhost:8990
+LULL_SERVER=http://localhost:8990 kapari-lull init   # point the client at it
 ```
 
-Endpoints: `GET /ad`, `GET /click?id=`, `POST /bid`, `GET /leaderboard`.
+Endpoints: `GET /feed`, `POST /event`, `POST /feed`, `GET /leaderboard`, `GET /health`.
 
-Post a bid:
+Replace the feed:
 
 ```bash
-curl -X POST localhost:8787/bid -d '{"id":"acme","text":"Acme — ship faster","url":"https://acme.dev","bid_cpm":42}'
+curl -X POST localhost:8990/feed \
+  -d '{"items":[{"title":"Acme — ship faster","url":"https://acme.dev","sponsor":"Acme"}]}'
+```
+
+Report a click (the only event clients still send — impressions are counted
+automatically by `GET /feed`):
+
+```bash
+curl -X POST localhost:8990/event -d '{"item_id":"do","type":"click"}'
 ```
 
 ## Configure
 
 | Env | Default | Meaning |
 |---|---|---|
-| `LULL_SERVER` | _(unset)_ | Ad server URL; unset → local affiliate fill |
+| `LULL_SERVER` | _(unset)_ | Feed server URL (e.g. `http://localhost:8990`); unset → local affiliate fill |
 | `LULL_COMMAND` | `kapari-lull line` | Command `kapari-lull init` writes into settings |
-| `PORT` / `LULL_PUBLIC_URL` | `8787` | Server port / public base URL |
+| `PORT` / `LULL_PUBLIC_URL` | `8990` | Server port / public base URL |
 
 > Replace the `REPLACE_ME` affiliate codes in `src/ads.js` with your own.
 

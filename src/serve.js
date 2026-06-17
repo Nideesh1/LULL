@@ -1,90 +1,113 @@
 import { createServer } from 'node:http'
-import { FALLBACK_ADS, render } from './ads.js'
+import { FALLBACK_ADS } from './ads.js'
 
-// Reference ad / bid server. Affiliate fill is seeded as low house bids; real
-// bids posted to /bid outrank them. In-memory only — production swaps the
-// counting + payout for the private anti-fraud / Stripe module.
+// Reference feed server — a zero-dependency, in-memory stand-in for
+// AI_LULL_BACKEND that speaks the same GET /feed + POST /event contract, so you
+// can develop the client without the full Mongo/Redis stack. In-memory only;
+// production is the real backend.
 export async function runServe(args) {
-  const port = Number(process.env.PORT || args[0] || 8787)
+  const port = Number(process.env.PORT || args[0] || 8990)
   const publicUrl = (process.env.LULL_PUBLIC_URL || `http://localhost:${port}`).replace(/\/$/, '')
 
-  const ads = new Map()
-  for (const a of FALLBACK_ADS) ads.set(a.id, { ...a, bid_cpm: 1, impressions: 0, clicks: 0 })
+  // Seed the in-memory feed from the built-in affiliate inventory, in the
+  // backend's FeedItem shape. make() also accepts backend-shaped items (title/
+  // sponsor/ref_code) so POST /feed round-trips cleanly.
+  let seq = 0
+  const make = (a) => ({
+    item_id: a.item_id || a.id || `it_${++seq}`,
+    kind: a.kind || 'tool',
+    title: a.title ?? a.text ?? '',
+    url: a.url,
+    sponsor: a.sponsor ?? a.brand ?? null,
+    ref_code: a.ref_code ?? null,
+    impressions: 0,
+    clicks: 0,
+  })
+  let items = FALLBACK_ADS.map(make)
+  let rr = 0
 
-  const weight = (a) => Math.max(a.bid_cpm, 0.01)
-  function pick() {
-    const list = [...ads.values()]
-    if (!list.length) return null
-    const total = list.reduce((s, a) => s + weight(a), 0)
-    let r = Math.random() * total
-    for (const a of list) { r -= weight(a); if (r <= 0) return a }
-    return list[list.length - 1]
-  }
-
-  function board() {
-    return [...ads.values()]
-      .sort((a, b) => b.bid_cpm - a.bid_cpm)
-      .map(({ id, brand, text, bid_cpm, impressions, clicks }) => ({ id, brand, text, bid_cpm, impressions, clicks }))
-  }
+  // Public shape mirrors the backend's _serialize (no counters leaked).
+  const serialize = (it) => ({
+    item_id: it.item_id,
+    kind: it.kind,
+    title: it.title,
+    url: it.url,
+    sponsor: it.sponsor,
+    ref_code: it.ref_code,
+  })
 
   const json = (res, code, obj) => {
     res.writeHead(code, { 'content-type': 'application/json' })
     res.end(JSON.stringify(obj, null, 2))
   }
+  const readBody = async (req) => { let b = ''; for await (const c of req) b += c; return b }
 
   const server = createServer(async (req, res) => {
     const u = new URL(req.url, publicUrl)
 
-    if (u.pathname === '/ad') {
-      const a = pick()
-      if (!a) { res.end(''); return }
-      a.impressions++
-      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' })
-      res.end(render({ text: a.text, url: `${publicUrl}/click?id=${encodeURIComponent(a.id)}` }))
-      return
+    if (u.pathname === '/health') return json(res, 200, { status: 'ok' })
+
+    // Public. One round-robin `item` + the full `items` list (for client-side
+    // caching). The cursor advances per call, like the backend's Redis INCR.
+    // Counts as an impression right here, before responding — mirrors the
+    // backend: the client makes one call and the count is already durable by
+    // the time it gets a response back, no follow-up POST required.
+    if (u.pathname === '/feed' && req.method === 'GET') {
+      if (!items.length) return json(res, 200, { item: null, items: [] })
+      const it = items[rr++ % items.length]
+      it.impressions++
+      return json(res, 200, { item: serialize(it), items: items.map(serialize) })
     }
 
-    if (u.pathname === '/click') {
-      const a = ads.get(u.searchParams.get('id'))
-      if (a) a.clicks++
-      res.writeHead(302, { location: a?.url || 'https://github.com/Nideesh1/LULL' })
-      res.end()
-      return
-    }
-
-    if (u.pathname === '/bid' && req.method === 'POST') {
-      let body = ''
-      for await (const c of req) body += c
+    // Public, fire-and-forget telemetry for what the server can't observe on
+    // its own — clicks (those happen in the user's browser). Impressions are
+    // now counted by /feed itself (above); this still accepts "impression"
+    // too, for other/older clients.
+    if (u.pathname === '/event' && req.method === 'POST') {
       try {
-        const b = JSON.parse(body)
-        if (!b.id || !b.text || !b.url) return json(res, 400, { error: 'id, text, url required' })
-        ads.set(b.id, {
-          id: b.id,
-          text: String(b.text).slice(0, 60),
-          url: b.url,
-          brand: b.brand || '',
-          bid_cpm: Number(b.bid_cpm) || 1,
-          impressions: 0,
-          clicks: 0,
-        })
-        return json(res, 200, { ok: true, leaderboard: board() })
+        const ev = JSON.parse(await readBody(req))
+        if (ev.type !== 'impression' && ev.type !== 'click')
+          return json(res, 400, { detail: 'type must be impression|click' })
+        const it = items.find((x) => x.item_id === ev.item_id)
+        if (it) it[ev.type === 'click' ? 'clicks' : 'impressions']++
+        return json(res, 202, { accepted: true })
       } catch {
-        return json(res, 400, { error: 'invalid json' })
+        return json(res, 400, { detail: 'invalid json' })
       }
     }
 
-    if (u.pathname === '/leaderboard') return json(res, 200, board())
+    // Replace the whole feed. The real backend gates this behind x-admin-key;
+    // the local reference leaves it open for convenience.
+    if (u.pathname === '/feed' && req.method === 'POST') {
+      try {
+        const body = JSON.parse(await readBody(req))
+        const incoming = Array.isArray(body.items) ? body.items : []
+        items = incoming.map(make)
+        rr = 0
+        return json(res, 200, { count: items.length })
+      } catch {
+        return json(res, 400, { detail: 'invalid json' })
+      }
+    }
+
+    // Local-only debug view of the counters the backend's worker would persist.
+    if (u.pathname === '/leaderboard') {
+      return json(res, 200, items
+        .map(({ item_id, title, sponsor, impressions, clicks }) =>
+          ({ item_id, title, sponsor, impressions, clicks }))
+        .sort((a, b) => b.impressions - a.impressions))
+    }
 
     res.writeHead(404, { 'content-type': 'text/plain' })
     res.end('not found')
   })
 
   server.listen(port, () => {
-    console.log(`lull serving on ${publicUrl}`)
-    console.log(`  GET  /ad?repo=     → one ad line (+1 impression)`)
-    console.log(`  GET  /click?id=    → 302 to advertiser (+1 click)`)
-    console.log(`  POST /bid          → add/replace an ad`)
-    console.log(`  GET  /leaderboard  → ranking`)
-    console.log(`\nPoint the client at it:  LULL_SERVER=${publicUrl} kapari-lull line`)
+    console.log(`lull serving on ${publicUrl}  (in-memory stand-in for AI_LULL_BACKEND)`)
+    console.log(`  GET  /feed         → { item, items }  (round-robin, counts an impression)`)
+    console.log(`  POST /event        → { item_id, type } click (or impression, for other clients)  (202)`)
+    console.log(`  POST /feed         → { items:[...] } replace the feed`)
+    console.log(`  GET  /leaderboard  → counters (local debug)`)
+    console.log(`\nPoint the client at it:  LULL_SERVER=${publicUrl} kapari-lull init`)
   })
 }

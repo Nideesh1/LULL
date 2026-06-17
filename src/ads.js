@@ -33,3 +33,16 @@ export function rotate(list, seconds = 8) {
   const i = Math.floor(Date.now() / (seconds * 1000)) % list.length
   return list[i]
 }
+
+// Normalize a backend /feed item ({ item_id, kind, title, url, sponsor, ... })
+// into the local ad shape that render()/rotate() expect ({ id, text, url, brand }),
+// so feed items and house ads share one render path. Returns null if unusable.
+//
+// `url` is rewritten to the backend's /click redirect rather than passed
+// through as item.url -- a click happens in the browser, long after this
+// CLI process has exited, so the redirect is the only place left that can
+// count it. The backend logs the click, then 302s on to the real URL.
+export function fromFeedItem(it, base) {
+  if (!it || !it.item_id) return null
+  return { id: it.item_id, text: it.title, url: `${base}/click?id=${encodeURIComponent(it.item_id)}`, brand: it.sponsor || '' }
+}
