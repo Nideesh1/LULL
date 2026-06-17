@@ -12,7 +12,7 @@ function help() {
   kapari-lull init          wire Lull into your Claude Code status line
   kapari-lull uninstall     remove Lull from your status line
   kapari-lull line          print one ad line (used by the status line; reads stdin)
-  kapari-lull serve [port]  run the ad / bid server
+  kapari-lull serve [port]  run a local feed server (GET /feed + POST /event)
 
 docs: https://github.com/Nideesh1/LULL
 `)
