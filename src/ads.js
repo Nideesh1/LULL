@@ -33,3 +33,11 @@ export function rotate(list, seconds = 8) {
   const i = Math.floor(Date.now() / (seconds * 1000)) % list.length
   return list[i]
 }
+
+// Normalize a backend /feed item ({ item_id, kind, title, url, sponsor, ... })
+// into the local ad shape that render()/rotate() expect ({ id, text, url, brand }),
+// so feed items and house ads share one render path. Returns null if unusable.
+export function fromFeedItem(it) {
+  if (!it || !it.url) return null
+  return { id: it.item_id, text: it.title, url: it.url, brand: it.sponsor || '' }
+}

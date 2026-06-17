@@ -1,4 +1,4 @@
-import { FALLBACK_ADS, render, rotate } from './ads.js'
+import { FALLBACK_ADS, render, rotate, fromFeedItem } from './ads.js'
 
 // Read piped stdin (Claude Code streams session JSON) with a short timeout so
 // the status line never hangs. Returns '' if nothing arrives.
@@ -15,23 +15,47 @@ function readStdin(timeoutMs = 60) {
   })
 }
 
+// Best-effort telemetry to the backend's POST /event. Bounded and swallows every
+// error — a slow or dead server must never break or delay the status line.
+async function reportEvent(server, itemId, type) {
+  if (!server || !itemId) return
+  try {
+    await fetch(`${server.replace(/\/$/, '')}/event`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ item_id: itemId, type }),
+      signal: AbortSignal.timeout(800),
+    })
+  } catch { /* telemetry is best-effort */ }
+}
+
 export async function runLine() {
-  const raw = await readStdin()
-  let repo = ''
-  try { repo = JSON.parse(raw)?.workspace?.repo?.name ?? '' } catch { /* ignore */ }
+  // Drain piped stdin (Claude Code streams session JSON) so we stay a well-behaved
+  // pipe consumer; the /feed endpoint needs nothing from it.
+  await readStdin()
 
   const server = process.env.LULL_SERVER
   if (server) {
     try {
-      const r = await fetch(
-        `${server.replace(/\/$/, '')}/ad?repo=${encodeURIComponent(repo)}`,
-        { signal: AbortSignal.timeout(1200) },
-      )
+      const r = await fetch(`${server.replace(/\/$/, '')}/feed`, {
+        signal: AbortSignal.timeout(1200),
+      })
       if (r.ok) {
-        const line = await r.text()
-        if (line) { process.stdout.write(line); return }
+        // Backend returns { item: {item_id, title, url, sponsor, ...}, items: [...] }.
+        // It round-robins `item` server-side (Redis INCR) on every call.
+        const { item } = await r.json()
+        const ad = fromFeedItem(item)
+        if (ad) {
+          // Print first so the status line updates immediately, then count the
+          // impression. Clicks can't be observed here — the terminal opens the URL
+          // directly in a browser, out of this process's reach — so with this
+          // backend we report impressions only.
+          process.stdout.write(render(ad))
+          await reportEvent(server, ad.id, 'impression')
+          return
+        }
       }
-    } catch { /* server down — fall through to local fill */ }
+    } catch { /* server down or bad payload — fall through to local fill */ }
   }
 
   // Local affiliate fill — rotates every 8s, no server required. A dead server
