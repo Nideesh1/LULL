@@ -49,14 +49,20 @@ export async function runServe(args) {
 
     // Public. One round-robin `item` + the full `items` list (for client-side
     // caching). The cursor advances per call, like the backend's Redis INCR.
+    // Counts as an impression right here, before responding — mirrors the
+    // backend: the client makes one call and the count is already durable by
+    // the time it gets a response back, no follow-up POST required.
     if (u.pathname === '/feed' && req.method === 'GET') {
       if (!items.length) return json(res, 200, { item: null, items: [] })
       const it = items[rr++ % items.length]
+      it.impressions++
       return json(res, 200, { item: serialize(it), items: items.map(serialize) })
     }
 
-    // Public, fire-and-forget telemetry. Mirrors the backend: /feed only serves,
-    // /event is what actually counts impressions/clicks.
+    // Public, fire-and-forget telemetry for what the server can't observe on
+    // its own — clicks (those happen in the user's browser). Impressions are
+    // now counted by /feed itself (above); this still accepts "impression"
+    // too, for other/older clients.
     if (u.pathname === '/event' && req.method === 'POST') {
       try {
         const ev = JSON.parse(await readBody(req))
@@ -98,8 +104,8 @@ export async function runServe(args) {
 
   server.listen(port, () => {
     console.log(`lull serving on ${publicUrl}  (in-memory stand-in for AI_LULL_BACKEND)`)
-    console.log(`  GET  /feed         → { item, items }  (round-robin)`)
-    console.log(`  POST /event        → { item_id, type } impression|click  (202)`)
+    console.log(`  GET  /feed         → { item, items }  (round-robin, counts an impression)`)
+    console.log(`  POST /event        → { item_id, type } click (or impression, for other clients)  (202)`)
     console.log(`  POST /feed         → { items:[...] } replace the feed`)
     console.log(`  GET  /leaderboard  → counters (local debug)`)
     console.log(`\nPoint the client at it:  LULL_SERVER=${publicUrl} kapari-lull init`)

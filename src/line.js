@@ -15,20 +15,6 @@ function readStdin(timeoutMs = 60) {
   })
 }
 
-// Best-effort telemetry to the backend's POST /event. Bounded and swallows every
-// error — a slow or dead server must never break or delay the status line.
-async function reportEvent(server, itemId, type) {
-  if (!server || !itemId) return
-  try {
-    await fetch(`${server.replace(/\/$/, '')}/event`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ item_id: itemId, type }),
-      signal: AbortSignal.timeout(800),
-    })
-  } catch { /* telemetry is best-effort */ }
-}
-
 export async function runLine() {
   // Drain piped stdin (Claude Code streams session JSON) so we stay a well-behaved
   // pipe consumer; the /feed endpoint needs nothing from it.
@@ -42,16 +28,18 @@ export async function runLine() {
       })
       if (r.ok) {
         // Backend returns { item: {item_id, title, url, sponsor, ...}, items: [...] }.
-        // It round-robins `item` server-side (Redis INCR) on every call.
+        // It round-robins `item` server-side (Redis INCR) AND counts the
+        // impression server-side before responding — this request alone is
+        // the whole interaction. No follow-up POST /event: that second call
+        // was the one place an impression could get lost if Claude Code
+        // killed this short-lived process before it landed (it cancels an
+        // in-flight statusLine run whenever a new render is triggered).
+        // Clicks still can't be observed here either way — the terminal opens
+        // the URL directly in a browser, out of this process's reach.
         const { item } = await r.json()
         const ad = fromFeedItem(item)
         if (ad) {
-          // Print first so the status line updates immediately, then count the
-          // impression. Clicks can't be observed here — the terminal opens the URL
-          // directly in a browser, out of this process's reach — so with this
-          // backend we report impressions only.
           process.stdout.write(render(ad))
-          await reportEvent(server, ad.id, 'impression')
           return
         }
       }

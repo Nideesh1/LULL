@@ -45,13 +45,16 @@ is untouched (and a `settings.json.lull.bak` backup is kept just in case).
 ```
 Claude Code status line
    └─ runs `kapari-lull line` every few seconds (passes session JSON on stdin)
-        └─ GET /feed → one item from the feed server
-             ├─ prints it as a clickable OSC 8 link  →  ⌘-click → advertiser
-             └─ POST /event {type:"impression"} → counts the impression
+        └─ GET /feed → one item, and the server counts the impression
+             └─ prints it as a clickable OSC 8 link  →  ⌘-click → advertiser
 ```
 
-- **Impressions** are counted on every render via `POST /event` — the base
-  revenue (CPM), works in every terminal.
+- **Impressions** are counted server-side, inside `GET /feed` itself, before
+  the response goes out — the base revenue (CPM), works in every terminal.
+  There's no separate "report this" call from the client: `kapari-lull line`
+  is a short-lived process Claude Code can kill mid-render on the next status
+  line update, so a second round-trip was the one place an impression could
+  silently get lost. One request, durably counted, every time.
 - **Clicks** open the advertiser URL directly from the terminal. With this
   backend they're *not* attributed: the click happens in your browser, out of
   reach of the (stateless, per-render) status-line process. Counting them would
@@ -90,10 +93,11 @@ curl -X POST localhost:8990/feed \
   -d '{"items":[{"title":"Acme — ship faster","url":"https://acme.dev","sponsor":"Acme"}]}'
 ```
 
-Send an event:
+Report a click (the only event clients still send — impressions are counted
+automatically by `GET /feed`):
 
 ```bash
-curl -X POST localhost:8990/event -d '{"item_id":"do","type":"impression"}'
+curl -X POST localhost:8990/event -d '{"item_id":"do","type":"click"}'
 ```
 
 ## Configure
